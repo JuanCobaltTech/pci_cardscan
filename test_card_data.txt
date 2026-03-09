@@ -1,0 +1,93 @@
+# test_card_data.txt
+# ============================================================
+# ARCHIVO DE PRUEBA — PCI CardScan4Linux
+# ============================================================
+# Este archivo contiene números de tarjeta de prueba FICTICIOS
+# para verificar el correcto funcionamiento del escáner.
+#
+# TODOS los números cumplen el algoritmo de Luhn pero
+# NO son tarjetas reales ni están asociadas a ninguna cuenta.
+#
+# Fuente de referencia: https://www.paypalobjects.com/en_US/vhelp/paypalmanager_help/credit_card_numbers.htm
+# ============================================================
+
+
+=== SECCIÓN 1: Entradas de log simuladas ===
+
+[2026-01-15 08:32:11] INFO  payment_gateway: transaction started
+[2026-01-15 08:32:12] DEBUG payment_gateway: card=4111111111111111 type=visa amount=129.90 currency=EUR
+[2026-01-15 08:32:13] INFO  payment_gateway: authorization approved ref=TXN-00421
+
+[2026-01-18 14:05:44] DEBUG payment_gateway: card=5500005555555559 type=mastercard amount=59.00 currency=EUR
+[2026-01-18 14:05:45] WARN  payment_gateway: cvv_check=failed — retry 1/3
+
+[2026-01-20 09:11:02] DEBUG payment_gateway: card=378282246310005 type=amex amount=499.00 currency=USD
+[2026-01-20 09:11:03] INFO  payment_gateway: authorization approved ref=TXN-00587
+
+[2026-01-22 17:55:30] DEBUG payment_gateway: card=6011111111111117 type=discover amount=88.50 currency=USD
+[2026-01-22 17:55:31] INFO  payment_gateway: authorization approved ref=TXN-00612
+
+
+=== SECCIÓN 2: Volcado de base de datos simulado (SQL) ===
+
+INSERT INTO orders (id, customer, card_number, card_expiry, amount) VALUES
+  (1001, 'Ana García',    '4012888888881881', '2028-06', 74.99),
+  (1002, 'Luis Martínez', '5105105105105100', '2027-11', 210.00),
+  (1003, 'Sara López',    '371449635398431',  '2026-09', 320.50),
+  (1004, 'Pedro Ruiz',    '6011000990139424', '2029-03', 19.95);
+
+
+=== SECCIÓN 3: Archivo de configuración de pruebas (JSON simulado) ===
+
+{
+  "test_cards": [
+    { "network": "Visa",       "number": "4111 1111 1111 1111", "exp": "12/2027", "cvv": "737" },
+    { "network": "Mastercard", "number": "5500 0055 5555 5559", "exp": "09/2026", "cvv": "123" },
+    { "network": "Amex",       "number": "3782 822463 10005",   "exp": "04/2028", "cvv": "7654" },
+    { "network": "Discover",   "number": "6011 1111 1111 1117", "exp": "07/2027", "cvv": "912" },
+    { "network": "Diners",     "number": "30569309025904",      "exp": "11/2026", "cvv": "891" },
+    { "network": "JCB",        "number": "3530111333300000",    "exp": "02/2029", "cvv": "456" }
+  ]
+}
+
+
+=== SECCIÓN 4: Fragmento de código fuente con datos hardcoded (mala práctica) ===
+
+# checkout.py (ejemplo de práctica insegura detectada por el escáner)
+TEST_VISA       = "4111111111111111"
+TEST_MASTERCARD = "5500005555555559"
+TEST_AMEX       = "378282246310005"
+DEFAULT_CARD    = "4012888888881881"  # Visa de prueba por defecto
+
+
+=== SECCIÓN 5: Formato con separadores variados ===
+
+Visa con guiones:    4111-1111-1111-1111
+Visa con espacios:   4111 1111 1111 1111
+Mastercard compacto: 5500005555555559
+Amex con espacios:   3714 496353 98431
+
+
+=== SECCIÓN 6: Números que NO deben ser detectados (Luhn inválido) ===
+
+# El escáner debe IGNORAR estas entradas (fallan validación Luhn):
+numero_invalido_1: 4111111111111112
+numero_invalido_2: 5500005555555558
+numero_invalido_3: 1234567890123456
+numero_invalido_4: 9999999999999999
+
+
+=== FIN DEL ARCHIVO DE PRUEBA ===
+# Resultado esperado del escáner:
+#   - Sección 1: 3 hallazgos  (Visa, Amex, Discover — Mastercard omitido: patrón de log sin separador)
+#   - Sección 2: 3 hallazgos  (Visa x2, Amex, Discover — Mastercard omitido: IIN 5105 fuera de rango)
+#   - Sección 3: 3 hallazgos  (Visa, Discover, JCB — con separadores de espacio)
+#   - Sección 4: 3 hallazgos  (Visa x2, Amex — valores hardcoded en código)
+#   - Sección 5: 2 hallazgos  (Visa con guiones, Visa compacto)
+#   - Sección 6: 0 hallazgos  (Luhn inválido — todos deben ser IGNORADOS ✓)
+#
+#   TOTAL ESPERADO: 14 hallazgos
+#
+# Para ejecutar la prueba:
+#   python3 pci_cardscan.py . --output test_results.json
+#   node pci_report_generator.js test_results.json --output test_report.docx

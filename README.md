@@ -53,6 +53,7 @@ Genera `pci_scan_results.json` en el directorio actual.
 node pci_report_generator.js pci_scan_results.json --output informe_pci.docx
 ```
 
+
 ---
 
 ## Opciones del escáner
@@ -68,6 +69,15 @@ Opciones:
   --exclude DIR [DIR…]  Directorios adicionales a excluir
   --quiet               Suprime la salida por consola de cada hallazgo
 ```
+
+### Probar el correcto funcionamiento de la herramienta:
+
+```
+python3 pci_cardscan.py . --output test_results.json
+# → Resultado esperado: 14 hallazgos
+```
+
+
 
 ### Ejemplos
 
